@@ -1,2 +1,0 @@
-# Casther
-Distribuidora
