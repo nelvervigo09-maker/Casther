@@ -47,7 +47,7 @@ function stats(){let cats=0,rows=0;catalog.forEach(l=>l.s.forEach(s=>{cats++;s.t
 const numCol=h=>/UND|CAJA|PACK|DISPLAY|BOLSON|PLANCHA|TIRA|PAR X|METROS/i.test(h);
 function tableHTML(t){return `<div class="tblw"><table><thead><tr>${t.h.map(h=>`<th>${esc(h)}</th>`).join('')}${ADMIN?'<th class="admin-only actions-th">Acciones</th>':''}</tr></thead><tbody>${t.r.map((r,j)=>`<tr data-k="${esc(norm(r.join(' ')))}">${r.map((v,i)=>`<td class="${i&&numCol(t.h[i]||'')?'num':''}">${esc(v||'—')}</td>`).join('')}${ADMIN?`<td class="admin-only actions-cell"><button type="button" class="delete-row" data-rowref="${esc(t.refs?.[j]||'')}" title="Eliminar fila de características">Eliminar fila</button></td>`:''}</tr>`).join('')}</tbody></table></div>`}
 function renderSite(){
- catalog=buildCatalog();stats();$('#brandLogo').src=IMG.logo_5503||'';
+ catalog=buildCatalog();stats();$('#brandLogo').src=COMPANY_LOGO;
  $('#logos').innerHTML=catalog.map(l=>`<a href="#${esc(l.id)}" title="${esc(l.n)}">${l.logo&&IMG[l.logo]?`<img src="${IMG[l.logo]}" alt="${esc(l.n)}">`:esc(l.n)}</a>`).join('');
  $('#main').innerHTML=catalog.map(l=>{
    const cnt=l.s.reduce((a,s)=>a+s.t.reduce((b,t)=>b+t.r.length,0),0);
@@ -148,10 +148,10 @@ function baseSectionPages(s,line){
  const items=s.i.filter(it=>!it.added&&IMG[it.f]);
  const rows=s.t.flatMap(t=>t.r.map((r,j)=>({h:t.h,r,ref:t.refs[j]})).filter(x=>!String(x.ref).startsWith('added:')));
  if(!items.length&&!rows.length)return [];
- const count=Math.max(Math.ceil(items.length/6),Math.ceil(rows.length/6));
+ const count=Math.max(Math.ceil(items.length/BOOK_SLOTS),Math.ceil(rows.length/BOOK_SLOTS));
  return Array.from({length:count},(_,i)=>{
-  let rowSlice=rows.slice(i*6,i*6+6);
-  return {type:'products',line:line.n,title:s.n,images:items.slice(i*6,i*6+6).map(x=>({image:IMG[x.f],name:x.c||s.n})),tables:splitRowTypes(rowSlice),new:false};
+  let rowSlice=rows.slice(i*BOOK_SLOTS,i*BOOK_SLOTS+BOOK_SLOTS);
+  return {type:'products',line:line.n,title:s.n,images:items.slice(i*BOOK_SLOTS,i*BOOK_SLOTS+BOOK_SLOTS).map(x=>({image:IMG[x.f],name:x.c||s.n})),tables:splitRowTypes(rowSlice),new:false};
  });
 }
 function splitRowTypes(rows){const out=[];for(const row of rows){let t=out[out.length-1];if(!t||JSON.stringify(t.h)!==JSON.stringify(row.h)){t={h:row.h,r:[]};out.push(t)}t.r.push(row.r)}return out}
@@ -159,7 +159,7 @@ function buildBook(){
  const pages=[{type:'cover'},{type:'index'}];
  for(const line of catalog){pages.push({type:'line',line:line.n,logo:IMG[line.logo]||null});
   for(const s of line.s){pages.push(...baseSectionPages(s,line));const grouped=new Map();for(const e of s.customEntries||[]){const key=JSON.stringify(e.headers);if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(e)}
-   for(const es of grouped.values())for(const group of bookChunk(es,6)){pages.push({type:'products',line:line.n,title:s.n,images:group.map(e=>({image:e.image,name:e.name})),tables:[{h:group[0].headers,r:group.map(e=>e.values)}],new:true})}
+   for(const es of grouped.values())for(const group of bookChunk(es,BOOK_SLOTS)){pages.push({type:'products',line:line.n,title:s.n,images:group.map(e=>({image:e.image,name:e.name})),tables:[{h:group[0].headers,r:group.map(e=>e.values)}],new:true})}
   }
  }
  bookPages=pages;$('#totalPages').textContent=pages.length;$('#bookRange').max=String(pages.length);bookIndex=Math.max(0,Math.min(bookIndex,pages.length-1));if(document.body.classList.contains('reading'))renderSpread();
@@ -174,9 +174,9 @@ function accentForLine(name){
 }
 function pageHTML(p,i){if(!p)return '<div class="book-blank" aria-hidden="true"></div>';let content='';
  if(p.type==='cover')content=`<img class="bk-cover-exact" src="${window.CASTHER_COVER_IMAGE||'ref/p1.png'}" alt="Portada original del catálogo Distribuciones Casther & Asociados S.A.C.">`;
- if(p.type==='index')content=`<div class="bk-head"><b>CASTHER</b><img src="${IMG.logo_5503||''}" alt=""></div><h2>ÍNDICE DE LÍNEAS</h2><div class="index-lines">${catalog.map(l=>`<div><span>${esc(l.n)}</span><span>${bookPages.findIndex(b=>b.type==='line'&&b.line===l.n)+1}</span></div>`).join('')}</div>`;
- if(p.type==='line')content=`<img class="bk-watermark" src="${IMG.logo_5503||''}" alt="">${p.logo?`<img class="line-logo" src="${p.logo}" alt="">`:''}<h2>PRODUCTOS<br>LÍNEA<br>${esc(p.line)}</h2><p>CALIDAD Y GARANTÍA</p>`;
- if(p.type==='products')content=`<img class="bk-watermark" src="${IMG.logo_5503||''}" alt=""><div class="bk-head"><div><small>CATÁLOGO DE PRODUCTOS</small><b>CASTHER</b></div><img src="${IMG.logo_5503||''}" alt=""></div><div class="bk-section">${esc(p.title)}</div><div class="bk-sub">LÍNEA ${esc(p.line)}${p.new?' · NUEVOS PRODUCTOS':''}</div><div class="bk-products">${p.images.map(x=>`<div class="bk-item">${x.image?`<img src="${x.image}" alt="${esc(x.name)}">`:'<div class="placeholder">Sin foto</div>'}<b>${esc(x.name)}</b></div>`).join('')}</div>${p.tables.map(t=>`<table class="bk-table"><thead><tr>${t.h.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${t.r.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`).join('')}`;
+ if(p.type==='index')content=`<div class="bk-head"><b>CASTHER</b><img src="${COMPANY_LOGO}" alt="Logo Casther"></div><h2>ÍNDICE DE LÍNEAS</h2><div class="index-lines">${catalog.map(l=>`<div><span>${esc(l.n)}</span><span>${bookPages.findIndex(b=>b.type==='line'&&b.line===l.n)+1}</span></div>`).join('')}</div>`;
+ if(p.type==='line')content=`<img class="bk-watermark" src="${COMPANY_LOGO}" alt=""><div class="bk-head solo"><img src="${COMPANY_LOGO}" alt="Logo Casther"></div>${p.logo?`<img class="line-logo" src="${p.logo}" alt="">`:''}<h2>PRODUCTOS<br>LÍNEA<br>${esc(p.line)}</h2><p>CALIDAD Y GARANTÍA</p>`;
+ if(p.type==='products')content=`<img class="bk-watermark" src="${COMPANY_LOGO}" alt=""><div class="bk-head"><div><small>CATÁLOGO DE PRODUCTOS</small><b>CASTHER</b></div><img src="${COMPANY_LOGO}" alt="Logo Casther"></div><div class="bk-section">${esc(p.title)}</div><div class="bk-sub">LÍNEA ${esc(p.line)}${p.new?' · NUEVOS PRODUCTOS':''}</div><div class="bk-products">${p.images.map(x=>`<div class="bk-item">${x.image?`<img src="${x.image}" alt="${esc(x.name)}">`:'<div class="placeholder">Sin foto</div>'}<b>${esc(x.name)}</b></div>`).join('')}</div>${p.tables.map(t=>`<table class="bk-table"><thead><tr>${t.h.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${t.r.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`).join('')}`;
  const accent=p.line?accentForLine(p.line):'#144b9e';
  return `<section class="a4page ${p.type==='cover'?'cover-page':p.type==='line'?'line-page':p.type==='index'?'bk-index':''}" style="--bk-accent:${accent}" aria-label="Página ${i+1} del catálogo">${content}${p.type==='cover'?'':`<div class="bk-footer"><span>Distribuciones Casther &amp; Asociados</span><em>${i+1}</em></div>`}</section>`;
 }
@@ -253,18 +253,18 @@ const loadImg=src=>new Promise(resolve=>{if(!src)return resolve(null);const im=n
 function fitImg(c,im,x,y,w,h){if(!im)return;const r=Math.min(w/im.width,h/im.height);const iw=im.width*r,ih=im.height*r;c.drawImage(im,x+(w-iw)/2,y+(h-ih)/2,iw,ih)}
 async function canvasFor(p,index){const canvas=document.createElement('canvas');canvas.width=840;canvas.height=1188;const c=canvas.getContext('2d',{alpha:false});c.fillStyle='white';c.fillRect(0,0,840,1188);
  c.fillStyle='#f7a2aa';c.beginPath();c.ellipse(45,-30,240,150,-.4,0,Math.PI*2);c.fill();c.fillStyle='#f1909e';c.beginPath();c.ellipse(790,1250,390,165,-.3,0,Math.PI*2);c.fill();
- const logo=await loadImg(IMG.logo_5503);
+ const logo=await loadImg(COMPANY_LOGO);
  if(p.type==='cover'){const cover=await loadImg(window.CASTHER_COVER_IMAGE||'ref/p1.png');if(cover)c.drawImage(cover,0,0,840,1188);else txt(c,'CATÁLOGO CASTHER',420,420,750,'bold 80px Arial','#124892','center')}
  else if(p.type==='line'){fitImg(c,await loadImg(p.logo),200,160,440,170);txt(c,'PRODUCTOS',420,495,740,'bold 75px Arial','#1b2a6b','center');txt(c,'LÍNEA',420,600,740,'bold 68px Arial','#e3262f','center');for(const [i,str]of wrapCanvas(c,p.line,700,'bold 63px Arial').slice(0,3).entries())txt(c,str,420,705+i*77,740,'bold 63px Arial','#1b2a6b','center')}
  else if(p.type==='index'){txt(c,'ÍNDICE DE LÍNEAS',420,105,730,'bold 51px Arial','#1b2a6b','center');const linePages=bookPages.filter(b=>b.type==='line');for(let j=0;j<linePages.length;j++){const col=j<Math.ceil(linePages.length/2)?0:1;const row=j%(Math.ceil(linePages.length/2));const x=80+col*395;txt(c,linePages[j].line,x,235+row*48,280,'bold 18px Arial','#1b2a6b');txt(c,String(bookPages.indexOf(linePages[j])+1),x+282,235+row*48,35,'bold 18px Arial','#e3262f','right')}}
  else if(p.type==='products'){
- txt(c,'CATÁLOGO DE PRODUCTOS',70,72,400,'bold 19px Arial','#e3262f');fitImg(c,logo,590,50,180,76);
- txt(c,p.title.toUpperCase(),420,145,746,'bold 37px Arial','#1b2a6b','center');txt(c,'LÍNEA '+p.line.toUpperCase()+(p.new?' · NUEVOS PRODUCTOS':''),420,200,730,'bold 15px Arial','#6577a5','center');
- const top=256,x0=66,gap=15,cellW=226,cellH=205;
+ txt(c,'CATÁLOGO DE PRODUCTOS',70,64,400,'bold 19px Arial','#e3262f');fitImg(c,logo,536,34,245,96);
+ c.save(); c.globalAlpha=.07; fitImg(c,logo,135,320,570,220); c.restore();
+ txt(c,p.title.toUpperCase(),420,138,746,'bold 38px Arial','#1b2a6b','center');txt(c,'LÍNEA '+p.line.toUpperCase()+(p.new?' · NUEVOS PRODUCTOS':''),420,190,730,'bold 16px Arial','#6577a5','center');
+ const top=228,x0=66,gapX=22,gapY=16,cellW=343,cellH=228;
  const ims=await Promise.all(p.images.map(i=>loadImg(i.image)));
- for(let k=0;k<p.images.length;k++){const col=k%3,row=Math.floor(k/3),x=x0+col*(cellW+gap),y=top+row*cellH;fitImg(c,ims[k],x+17,y,cellW-34,158);rounded(c,x+3,y+159,cellW-6,36,18,'#13549e');drawCell(c,p.images[k].name,x+6,y+159,cellW-12,36,'bold 13px Arial','#fff')}
- // Reserva el tercio inferior a tablas con columnas y filas compatibles con el catálogo original.
- const tbTop=708,tabEnd=1095;const totalRows=p.tables.reduce((n,t)=>n+t.r.length+1,0)||1;let cy=tbTop;const slot=Math.min(40,(tabEnd-tbTop)/totalRows);
+ for(let k=0;k<p.images.length;k++){const col=k%2,row=Math.floor(k/2),x=x0+col*(cellW+gapX),y=top+row*(cellH+gapY); c.fillStyle='#ffffff'; c.strokeStyle='#d7e1f5'; c.lineWidth=2; c.beginPath(); c.roundRect(x,y,cellW,cellH,18); c.fill(); c.stroke(); fitImg(c,ims[k],x+26,y+18,cellW-52,150); rounded(c,x+18,y+176,cellW-36,34,16,'#13549e'); drawCell(c,p.images[k].name,x+26,y+176,cellW-52,34,'bold 13px Arial','#fff')}
+ const tbTop=728,tabEnd=1096;const totalRows=p.tables.reduce((n,t)=>n+t.r.length+1,0)||1;let cy=tbTop;const slot=Math.min(38,(tabEnd-tbTop)/totalRows);
  for(const t of p.tables){const cols=t.h.length||4,w=708/cols;for(let row=-1;row<t.r.length;row++){const h=slot;for(let k=0;k<cols;k++){const x=66+k*w;c.fillStyle=row<0?'#cbd8ff':(row%2?'#f8faff':'#fff');c.fillRect(x,cy,w,h);c.strokeStyle='#2861a4';c.lineWidth=1.3;c.strokeRect(x,cy,w,h);drawCell(c,row<0?t.h[k]:t.r[row]?.[k],x,cy,w,h,row<0?'bold 12px Arial':'bold 12px Arial',row<0?'#1b2a6b':'#192f6f')}cy+=h}}
  }
  txt(c,'DISTRIBUCIONES CASTHER & ASOCIADOS S.A.C.',65,1134,660,'bold 13px Arial','#2e4383');rounded(c,736,1123,46,39,14,'#10121d');txt(c,String(index+1),759,1134,42,'bold 19px Arial','#fff','center');
